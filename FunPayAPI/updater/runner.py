@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, AsyncGenerator
 if TYPE_CHECKING:
     from ..account import Account
 
 import json
+import asyncio
 import logging
 from bs4 import BeautifulSoup
 
@@ -78,7 +79,7 @@ class Runner:
 
         self.__msg_time_re = re.compile(r"\d{2}:\d{2}")
 
-    def get_updates(self) -> dict:
+    async def get_updates(self) -> dict:
         """
         Запрашивает список событий FunPay.
 
@@ -108,12 +109,12 @@ class Runner:
             "x-requested-with": "XMLHttpRequest"
         }
 
-        response = self.account.method("post", "runner/", headers, payload, raise_not_200=True)
+        response = await self.account.method("post", "runner/", headers, payload, raise_not_200=True)
         json_response = response.json()
         logger.debug(f"Получены данные о событиях: {json_response}")
         return json_response
 
-    def parse_updates(self, updates: dict) -> list[InitialChatEvent | ChatsListChangedEvent |
+    async def parse_updates(self, updates: dict) -> list[InitialChatEvent | ChatsListChangedEvent |
                                                    LastChatMessageChangedEvent | NewMessageEvent | InitialOrderEvent |
                                                    OrdersListChangedEvent | NewOrderEvent | OrderStatusChangedEvent]:
         """
@@ -134,15 +135,15 @@ class Runner:
         events = []
         for obj in updates["objects"]:
             if obj.get("type") == "chat_bookmarks":
-                events.extend(self.parse_chat_updates(obj))
+                events.extend(await self.parse_chat_updates(obj))
             elif obj.get("type") == "orders_counters":
-                events.extend(self.parse_order_updates(obj))
+                events.extend(await self.parse_order_updates(obj))
 
         if self.__first_request:
             self.__first_request = False
         return events
 
-    def parse_chat_updates(self, obj) -> list[InitialChatEvent | ChatsListChangedEvent | LastChatMessageChangedEvent |
+    async def parse_chat_updates(self, obj) -> list[InitialChatEvent | ChatsListChangedEvent | LastChatMessageChangedEvent |
                                               NewMessageEvent]:
         """
         Парсит события, связанные с чатами.
@@ -209,14 +210,14 @@ class Runner:
             chats_pack = lcmc_events[:10]
             del lcmc_events[:10]
             chats_data = {i.chat.id: i.chat.name for i in chats_pack}
-            new_msg_events = self.generate_new_message_events(chats_data)
+            new_msg_events = await self.generate_new_message_events(chats_data)
             for i in chats_pack:
                 events.append(i)
                 if new_msg_events.get(i.chat.id):
                     events.extend(new_msg_events[i.chat.id])
         return events
 
-    def generate_new_message_events(self, chats_data: dict[int, str]) -> dict[int, list[NewMessageEvent]]:
+    async def generate_new_message_events(self, chats_data: dict[int, str]) -> dict[int, list[NewMessageEvent]]:
         """
         Получает историю переданных чатов и генерирует события новых сообщений.
 
@@ -231,14 +232,14 @@ class Runner:
         while attempts:
             attempts -= 1
             try:
-                chats = self.account.get_chats_histories(chats_data)
+                chats = await self.account.get_chats_histories(chats_data)
                 break
             except exceptions.RequestFailedError as e:
                 logger.error(e)
             except:
                 logger.error(f"Не удалось получить истории чатов {list(chats_data.keys())}.")
                 logger.debug("TRACEBACK", exc_info=True)
-            time.sleep(1)
+            await asyncio.sleep(1)
         else:
             logger.error(f"Не удалось получить истории чатов {list(chats_data.keys())}: превышено кол-во попыток.")
             return {}
@@ -290,7 +291,7 @@ class Runner:
                 result[cid].append(event)
         return result
 
-    def parse_order_updates(self, obj) -> list[InitialOrderEvent | OrdersListChangedEvent | NewOrderEvent |
+    async def parse_order_updates(self, obj) -> list[InitialOrderEvent | OrdersListChangedEvent | NewOrderEvent |
                                                OrderStatusChangedEvent]:
         """
         Парсит события, связанные с продажами.
@@ -317,14 +318,14 @@ class Runner:
         while attempts:
             attempts -= 1
             try:
-                orders_list = self.account.get_sells()
+                orders_list = await self.account.get_sells()
                 break
             except exceptions.RequestFailedError as e:
                 logger.error(e)
             except:
                 logger.error("Не удалось обновить список заказов.")
                 logger.debug("TRACEBACK", exc_info=True)
-            time.sleep(1)
+            await asyncio.sleep(1)
         else:
             logger.error("Не удалось обновить список продаж: превышено кол-во попыток.")
             return events
@@ -385,8 +386,8 @@ class Runner:
         else:
             self.by_bot_ids[chat_id].append(message_id)
 
-    def listen(self, requests_delay: int | float = 6.0,
-               ignore_exceptions: bool = True) -> Generator[InitialChatEvent | ChatsListChangedEvent |
+    async def listen(self, requests_delay: int | float = 6.0,
+               ignore_exceptions: bool = True) -> AsyncGenerator[InitialChatEvent | ChatsListChangedEvent |
                                                             LastChatMessageChangedEvent | NewMessageEvent |
                                                             InitialOrderEvent | OrdersListChangedEvent | NewOrderEvent |
                                                             OrderStatusChangedEvent]:
@@ -410,8 +411,8 @@ class Runner:
         """
         while True:
             try:
-                updates = self.get_updates()
-                events = self.parse_updates(updates)
+                updates = await self.get_updates()
+                events = await self.parse_updates(updates)
                 for event in events:
                     yield event
             except Exception as e:
@@ -421,4 +422,4 @@ class Runner:
                     logger.error("Произошла ошибка при получении событий. "
                                  "(ничего страшного, если это сообщение появляется нечасто).")
                     logger.debug("TRACEBACK", exc_info=True)
-            time.sleep(requests_delay)
+            await asyncio.sleep(requests_delay)

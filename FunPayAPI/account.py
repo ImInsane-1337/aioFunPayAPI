@@ -3,10 +3,11 @@ from typing import TYPE_CHECKING, Literal, Any, Optional, IO
 if TYPE_CHECKING:
     from .updater.runner import Runner
 
-from requests_toolbelt import MultipartEncoder
+import aiohttp
+from aiohttp import FormData
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
-import requests
+import asyncio
 import logging
 import random
 import string
@@ -20,6 +21,39 @@ from .common import exceptions, utils, enums
 
 logger = logging.getLogger("FunPayAPI.account")
 PRIVATE_CHAT_ID_RE = re.compile(r"users-\d+-\d+$")
+
+
+
+class _ResponseWrapper:
+    """Lightweight wrapper to hold response data after aiohttp context exits."""
+    def __init__(self, status: int, body: bytes, headers, cookies,
+                 url: str = "", request_method: str = "",
+                 request_headers: dict = None, request_body=None):
+        self.status = status
+        self.status_code = status  # compat
+        self._body = body
+        self.headers = headers
+        self.cookies = cookies
+        self.url = url
+        self.request_method = request_method
+        self.request_headers = request_headers or {}
+        self.request_body = request_body
+
+    def json(self):
+        import json as _json
+        return _json.loads(self._body)
+
+    @property
+    def content(self):
+        return self._body
+
+    @property
+    def text(self):
+        return self._body.decode("utf-8")
+
+    def get_dict(self):
+        """Cookie compat."""
+        return {c.key: c.value for c in self.cookies.values()} if self.cookies else {}
 
 
 class Account:
@@ -86,8 +120,8 @@ class Account:
         self.__bot_character = "⁤"
         """Если сообщение начинается с этого символа, значит оно отправлено ботом."""
 
-    def method(self, request_method: Literal["post", "get"], api_method: str, headers: dict, payload: Any,
-               exclude_phpsessid: bool = False, raise_not_200: bool = False) -> requests.Response:
+    async def method(self, request_method: Literal["post", "get"], api_method: str, headers: dict, payload: Any,
+               exclude_phpsessid: bool = False, raise_not_200: bool = False) -> aiohttp.ClientResponse:
         """
         Отправляет запрос к FunPay. Добавляет в заголовки запроса user_agent и куки.
 
@@ -117,16 +151,28 @@ class Account:
         if self.user_agent:
             headers["user-agent"] = self.user_agent
         link = api_method if api_method.startswith("https://funpay.com") else "https://funpay.com/" + api_method
-        response = getattr(requests, request_method)(link, headers=headers, data=payload, timeout=self.requests_timeout,
-                                                     proxies=self.proxy or {})
+        timeout = aiohttp.ClientTimeout(total=self.requests_timeout)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            method_func = getattr(session, request_method)
+            proxy_url = self.proxy.get("https") or self.proxy.get("http") if self.proxy else None
+            data = payload if payload else None
+            async with method_func(link, headers=headers, data=data, proxy=proxy_url) as response:
+                # Read body eagerly so we can use it after context manager exits
+                body = await response.read()
+                response._body = body
 
-        if response.status_code == 403:
-            raise exceptions.UnauthorizedError(response)
-        elif response.status_code != 200 and raise_not_200:
-            raise exceptions.RequestFailedError(response)
-        return response
+                wrapper = _ResponseWrapper(
+                    response.status, body, response.headers, response.cookies,
+                    url=link, request_method=request_method.upper(),
+                    request_headers=headers, request_body=payload
+                )
+                if response.status == 403:
+                    raise exceptions.UnauthorizedError(wrapper)
+                elif response.status != 200 and raise_not_200:
+                    raise exceptions.RequestFailedError(wrapper)
+                return wrapper
 
-    def get(self, update_phpsessid: bool = False) -> Account:
+    async def get(self, update_phpsessid: bool = False) -> Account:
         """
         Получает / обновляет данные об аккаунте. Необходимо вызывать каждые 40-60 минут, дабы обновить
         :py:obj:`.Account.phpsessid`.
@@ -137,9 +183,9 @@ class Account:
         :return: объект аккаунта с обновленными данными.
         :rtype: :class:`FunPayAPI.account.Account`
         """
-        response = self.method("get", "https://funpay.com", {}, {}, update_phpsessid, raise_not_200=True)
+        response = await self.method("get", "https://funpay.com", {}, {}, update_phpsessid, raise_not_200=True)
 
-        html_response = response.content.decode()
+        html_response = response.text
         parser = BeautifulSoup(html_response, "html.parser")
 
         username = parser.find("div", {"class": "user-link-name"})
@@ -157,7 +203,7 @@ class Account:
         active_purchases = parser.find("span", {"class": "badge badge-orders"})
         self.active_purchases = int(active_purchases.text) if active_purchases else 0
 
-        cookies = response.cookies.get_dict()
+        cookies = response.get_dict()
         if update_phpsessid or not self.phpsessid:
             self.phpsessid = cookies["PHPSESSID"]
         if not self.is_initiated:
@@ -168,7 +214,7 @@ class Account:
         self.__initiated = True
         return self
 
-    def get_subcategory_public_lots(self, subcategory_type: enums.SubCategoryTypes, subcategory_id: int) -> list[types.LotShortcut]:
+    async def get_subcategory_public_lots(self, subcategory_type: enums.SubCategoryTypes, subcategory_id: int) -> list[types.LotShortcut]:
         """
         Получает список всех опубликованных лотов переданной подкатегории.
 
@@ -185,8 +231,8 @@ class Account:
             raise exceptions.AccountNotInitiatedError()
 
         meth = f"lots/{subcategory_id}/" if subcategory_type is enums.SubCategoryTypes.COMMON else f"chips/{subcategory_id}/"
-        response = self.method("get", meth, {"accept": "*/*"}, {}, raise_not_200=True)
-        html_response = response.content.decode()
+        response = await self.method("get", meth, {"accept": "*/*"}, {}, raise_not_200=True)
+        html_response = response.text
         parser = BeautifulSoup(html_response, "html.parser")
 
         username = parser.find("div", {"class": "user-link-name"})
@@ -216,7 +262,7 @@ class Account:
             result.append(lot_obj)
         return result
 
-    def get_balance(self, lot_id: int = 18853876) -> types.Balance:
+    async def get_balance(self, lot_id: int = 18853876) -> types.Balance:
         """
         Получает информацию о балансе пользователя.
 
@@ -228,8 +274,8 @@ class Account:
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
-        response = self.method("get", f"lots/offer?id={lot_id}", {"accept": "*/*"}, {}, raise_not_200=True)
-        html_response = response.content.decode()
+        response = await self.method("get", f"lots/offer?id={lot_id}", {"accept": "*/*"}, {}, raise_not_200=True)
+        html_response = response.text
         parser = BeautifulSoup(html_response, "html.parser")
 
         username = parser.find("div", {"class": "user-link-name"})
@@ -242,7 +288,7 @@ class Account:
                                 float(balances["data-balance-total-eur"]), float(balances["data-balance-eur"]))
         return balance
 
-    def get_chat_history(self, chat_id: int | str, last_message_id: int = 99999999999999999999999,
+    async def get_chat_history(self, chat_id: int | str, last_message_id: int = 99999999999999999999999,
                          interlocutor_username: Optional[str] = None, from_id: int = 0) -> list[types.Message]:
         """
         Получает историю указанного чата (до 100 последних сообщений).
@@ -274,7 +320,7 @@ class Account:
             "node": chat_id,
             "last_message": last_message_id
         }
-        response = self.method("get", f"chat/history?node={chat_id}&last_message={last_message_id}",
+        response = await self.method("get", f"chat/history?node={chat_id}&last_message={last_message_id}",
                                headers, payload, raise_not_200=True)
 
         json_response = response.json()
@@ -287,7 +333,7 @@ class Account:
         return self.__parse_messages(json_response["chat"]["messages"], chat_id, interlocutor_id,
                                      interlocutor_username, from_id)
 
-    def get_chats_histories(self, chats_data: dict[int | str, str | None]) -> dict[int, list[types.Message]]:
+    async def get_chats_histories(self, chats_data: dict[int | str, str | None]) -> dict[int, list[types.Message]]:
         """
         Получает историю сообщений сразу нескольких чатов
         (до 50 сообщений на личный чат, до 25 сообщений на публичный чат).
@@ -311,7 +357,7 @@ class Account:
             "request": False,
             "csrf_token": self.csrf_token
         }
-        response = self.method("post", "runner/", headers, payload, raise_not_200=True)
+        response = await self.method("post", "runner/", headers, payload, raise_not_200=True)
         json_response = response.json()
 
         result = {}
@@ -329,7 +375,7 @@ class Account:
             result[i.get("id")] = messages
         return result
 
-    def upload_image(self, image: str | IO[bytes]) -> int:
+    async def upload_image(self, image: str | IO[bytes]) -> int:
         """
         Выгружает изображение на сервер FunPay для дальнейшей отправки в качестве сообщения.
         Для отправки изображения в чат рекомендуется использовать метод :meth:`FunPayAPI.account.Account.send_image`.
@@ -349,36 +395,32 @@ class Account:
         else:
             img = image
 
-        fields = {
-            'file': ("funpay_cardinal_image.png", img, "image/png"),
-            'file_id': "0"
-        }
-        boundary = '----WebKitFormBoundary' + ''.join(random.sample(string.ascii_letters + string.digits, 16))
-        m = MultipartEncoder(fields=fields, boundary=boundary)
+        m = FormData()
+        m.add_field('file', img, filename="funpay_cardinal_image.png", content_type="image/png")
+        m.add_field('file_id', "0")
 
         headers = {
             "accept": "*/*",
             "x-requested-with": "XMLHttpRequest",
-            "content-type": m.content_type,
         }
 
-        response = self.method("post", "file/addChatImage", headers, m)
+        response = await self.method("post", "file/addChatImage", headers, m)
 
-        if response.status_code == 400:
+        if response.status == 400:
             try:
                 json_response = response.json()
                 message = json_response.get("msg")
                 raise exceptions.ImageUploadError(response, message)
-            except requests.exceptions.JSONDecodeError:
+            except json.JSONDecodeError:
                 raise exceptions.ImageUploadError(response, None)
-        elif response.status_code != 200:
+        elif response.status != 200:
             raise exceptions.RequestFailedError(response)
 
         if not (document_id := response.json().get("fileId")):
             raise exceptions.ImageUploadError(response, None)
         return int(document_id)
 
-    def send_message(self, chat_id: int | str, text: Optional[str] = None, chat_name: Optional[str] = None,
+    async def send_message(self, chat_id: int | str, text: Optional[str] = None, chat_name: Optional[str] = None,
                      image_id: Optional[int] = None, add_to_ignore_list: bool = True,
                      update_last_saved_message: bool = False) -> types.Message:
         """
@@ -438,7 +480,7 @@ class Account:
             "csrf_token": self.csrf_token
         }
 
-        response = self.method("post", "runner/", headers, payload, raise_not_200=True)
+        response = await self.method("post", "runner/", headers, payload, raise_not_200=True)
         json_response = response.json()
         if not (resp := json_response.get("response")):
             raise exceptions.MessageNotDeliveredError(response, None, chat_id)
@@ -456,7 +498,7 @@ class Account:
                 message_text = parser.find("div", {"class": "message-text"}).text.replace(self.__bot_character, "", 1)
         except Exception as e:
             logger.debug("SEND_MESSAGE RESPONSE")
-            logger.debug(response.content.decode())
+            logger.debug(response.text)
             raise e
 
         message_obj = types.Message(int(mes["id"]), message_text, chat_id, chat_name, self.username, self.id,
@@ -501,7 +543,7 @@ class Account:
         result = self.send_message(chat_id, None, chat_name, image, add_to_ignore_list, update_last_saved_message)
         return result
 
-    def send_review(self, order_id: str, text: str, rating: Literal[1, 2, 3, 4, 5] = 5) -> str:
+    async def send_review(self, order_id: str, text: str, rating: Literal[1, 2, 3, 4, 5] = 5) -> str:
         """
         Отправляет / редактирует отзыв / ответ на отзыв.
 
@@ -532,17 +574,17 @@ class Account:
             "orderId": order_id
         }
 
-        response = self.method("post", "orders/review", headers, payload)
-        if response.status_code == 400:
+        response = await self.method("post", "orders/review", headers, payload)
+        if response.status == 400:
             json_response = response.json()
             msg = json_response.get("msg")
             raise exceptions.FeedbackEditingError(response, msg, order_id)
-        elif response.status_code != 200:
+        elif response.status != 200:
             raise exceptions.RequestFailedError(response)
 
         return response.json().get("content")
 
-    def delete_review(self, order_id: str) -> str:
+    async def delete_review(self, order_id: str) -> str:
         """
         Удаляет отзыв / ответ на отзыв.
 
@@ -565,18 +607,18 @@ class Account:
             "orderId": order_id
         }
 
-        response = self.method("post", "orders/reviewDelete", headers, payload)
+        response = await self.method("post", "orders/reviewDelete", headers, payload)
 
-        if response.status_code == 400:
+        if response.status == 400:
             json_response = response.json()
             msg = json_response.get("msg")
             raise exceptions.FeedbackEditingError(response, msg, order_id)
-        elif response.status_code != 200:
+        elif response.status != 200:
             raise exceptions.RequestFailedError(response)
 
         return response.json().get("content")
 
-    def refund(self, order_id):
+    async def refund(self, order_id):
         """
         Оформляет возврат средств за заказ.
 
@@ -597,12 +639,12 @@ class Account:
             "csrf_token": self.csrf_token
         }
 
-        response = self.method("post", "orders/refund", headers, payload, raise_not_200=True)
+        response = await self.method("post", "orders/refund", headers, payload, raise_not_200=True)
 
         if response.json().get("error"):
             raise exceptions.RefundError(response, response.json().get("msg"), order_id)
 
-    def withdraw(self, currency: enums.Currency, wallet: enums.Wallet, amount: int | float, address: str) -> float:
+    async def withdraw(self, currency: enums.Currency, wallet: enums.Wallet, amount: int | float, address: str) -> float:
         """
         Отправляет запрос на вывод средств.
 
@@ -651,14 +693,14 @@ class Account:
             "wallet": address,
             "amount_int": str(amount)
         }
-        response = self.method("post", "withdraw/withdraw", headers, payload, raise_not_200=True)
+        response = await self.method("post", "withdraw/withdraw", headers, payload, raise_not_200=True)
         json_response = response.json()
         if json_response.get("error"):
             error_message = json_response.get("msg")
             raise exceptions.WithdrawError(response, error_message)
         return float(json_response.get("amount_ext"))
 
-    def get_raise_modal(self, category_id: int) -> dict:
+    async def get_raise_modal(self, category_id: int) -> dict:
         """
         Отправляет запрос на получение modal-формы для поднятия лотов категории (игры).
         !ВНИМАНИЕ! Если на аккаунте только 1 подкатегория, относящаяся переданной категории (игре),
@@ -683,11 +725,11 @@ class Account:
             "game_id": category_id,
             "node_id": subcategory.id
         }
-        response = self.method("post", "https://funpay.com/lots/raise", headers, payload, raise_not_200=True)
+        response = await self.method("post", "https://funpay.com/lots/raise", headers, payload, raise_not_200=True)
         json_response = response.json()
         return json_response
 
-    def raise_lots(self, category_id: int, subcategories: Optional[list[int | types.SubCategory]] = None,
+    async def raise_lots(self, category_id: int, subcategories: Optional[list[int | types.SubCategory]] = None,
                    exclude: list[int] | None = None) -> bool:
         """
         Поднимает все лоты всех подкатегорий переданной категории (игры).
@@ -735,7 +777,7 @@ class Account:
             "node_ids[]": [i.id for i in subcats]
         }
 
-        response = self.method("post", "lots/raise", headers, payload, raise_not_200=True)
+        response = await self.method("post", "lots/raise", headers, payload, raise_not_200=True)
         json_response = response.json()
         logger.debug(f"Ответ FunPay (поднятие категорий): {json_response}.")
         if not json_response.get("error"):
@@ -746,7 +788,7 @@ class Account:
         else:
             raise exceptions.RaiseError(response, category, None, None)
 
-    def get_user(self, user_id: int) -> types.UserProfile:
+    async def get_user(self, user_id: int) -> types.UserProfile:
         """
         Парсит страницу пользователя.
 
@@ -759,8 +801,8 @@ class Account:
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
 
-        response = self.method("get", f"users/{user_id}/", {"accept": "*/*"}, {}, raise_not_200=True)
-        html_response = response.content.decode()
+        response = await self.method("get", f"users/{user_id}/", {"accept": "*/*"}, {}, raise_not_200=True)
+        html_response = response.text
         parser = BeautifulSoup(html_response, "html.parser")
 
         username = parser.find("div", {"class": "user-link-name"})
@@ -808,7 +850,7 @@ class Account:
                 user_obj.add_lot(lot_obj)
         return user_obj
 
-    def get_chat(self, chat_id: int) -> types.Chat:
+    async def get_chat(self, chat_id: int) -> types.Chat:
         """
         Получает информацию о личном чате.
 
@@ -821,8 +863,8 @@ class Account:
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
 
-        response = self.method("get", f"chat/?node={chat_id}", {"accept": "*/*"}, {}, raise_not_200=True)
-        html_response = response.content.decode()
+        response = await self.method("get", f"chat/?node={chat_id}", {"accept": "*/*"}, {}, raise_not_200=True)
+        html_response = response.text
         parser = BeautifulSoup(html_response, "html.parser")
         if (name := parser.find("div", {"class": "chat-header"}).find("div", {"class": "media-user-name"}).find("a").text) == "Чат":
             raise Exception("chat not found")  # todo
@@ -836,7 +878,7 @@ class Account:
         history = self.get_chat_history(chat_id, interlocutor_username=name)
         return types.Chat(chat_id, name, link, text, html_response, history)
 
-    def get_order(self, order_id: str) -> types.Order:
+    async def get_order(self, order_id: str) -> types.Order:
         """
         Получает полную информацию о заказе.
 
@@ -851,8 +893,8 @@ class Account:
         headers = {
             "accept": "*/*"
         }
-        response = self.method("get", f"orders/{order_id}/", headers, {}, raise_not_200=True)
-        html_response = response.content.decode()
+        response = await self.method("get", f"orders/{order_id}/", headers, {}, raise_not_200=True)
+        html_response = response.text
         parser = BeautifulSoup(html_response, "html.parser")
         username = parser.find("div", {"class": "user-link-name"})
         if not username:
@@ -920,7 +962,7 @@ class Account:
                             buyer_id, buyer_username, seller_id, seller_username, html_response, review)
         return order
 
-    def get_sells(self, start_from: str | None = None, include_paid: bool = True, include_closed: bool = True,
+    async def get_sells(self, start_from: str | None = None, include_paid: bool = True, include_closed: bool = True,
                   include_refunded: bool = True, exclude_ids: list[str] | None = None,
                   id: Optional[int] = None, buyer: Optional[str] = None,
                   state: Optional[Literal["closed", "paid", "refunded"]] = None, game: Optional[int] = None,
@@ -990,8 +1032,8 @@ class Account:
         if start_from:
             filters["continue"] = start_from
 
-        response = self.method("post" if start_from else "get", link, {}, filters, raise_not_200=True)
-        html_response = response.content.decode()
+        response = await self.method("post" if start_from else "get", link, {}, filters, raise_not_200=True)
+        html_response = response.text
 
         parser = BeautifulSoup(html_response, "html.parser")
         check_user = parser.find("div", {"class": "content-account content-account-login"})
@@ -1071,7 +1113,7 @@ class Account:
         for i in chats:
             self.__saved_chats[i.id] = i
 
-    def request_chats(self) -> list[types.ChatShortcut]:
+    async def request_chats(self) -> list[types.ChatShortcut]:
         """
         Запрашивает чаты и парсит их.
 
@@ -1094,7 +1136,7 @@ class Account:
             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
             "x-requested-with": "XMLHttpRequest"
         }
-        response = self.method("post", "https://funpay.com/runner/", headers, payload, raise_not_200=True)
+        response = await self.method("post", "https://funpay.com/runner/", headers, payload, raise_not_200=True)
         json_response = response.json()
 
         msgs = ""
@@ -1183,7 +1225,7 @@ class Account:
         self.add_chats(self.request_chats())
         return self.get_chat_by_id(chat_id)
 
-    def get_lot_fields(self, lot_id: int) -> types.LotFields:
+    async def get_lot_fields(self, lot_id: int) -> types.LotFields:
         """
         Получает все поля лота.
 
@@ -1200,7 +1242,7 @@ class Account:
             "content-type": "application/json",
             "x-requested-with": "XMLHttpRequest",
         }
-        response = self.method("get", f"lots/offerEdit?offer={lot_id}", headers, {}, raise_not_200=True)
+        response = await self.method("get", f"lots/offerEdit?offer={lot_id}", headers, {}, raise_not_200=True)
 
         json_response = response.json()
         bs = BeautifulSoup(json_response["html"], "html.parser")
@@ -1213,7 +1255,7 @@ class Account:
         result.update({field["name"]: "on" for field in bs.find_all("input", {"type": "checkbox"}, checked=True)})
         return types.LotFields(lot_id, result)
 
-    def save_lot(self, lot_fields: types.LotFields):
+    async def save_lot(self, lot_fields: types.LotFields):
         """
         Сохраняет лот на FunPay.
 
@@ -1230,7 +1272,7 @@ class Account:
         fields = lot_fields.renew_fields().fields
         fields["location"] = "trade"
 
-        response = self.method("post", "lots/offerSave", headers, fields, raise_not_200=True)
+        response = await self.method("post", "lots/offerSave", headers, fields, raise_not_200=True)
         json_response = response.json()
         if json_response.get("error"):
             raise exceptions.LotSavingError(response, json_response.get("error"), lot_fields.lot_id)

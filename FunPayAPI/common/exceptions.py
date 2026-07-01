@@ -1,7 +1,6 @@
 """
 В данном модуле описаны все кастомные исключения, используемые в пакете FunPayAPI.
 """
-import requests
 from .. import types
 
 
@@ -21,17 +20,19 @@ class RequestFailedError(Exception):
     """
     Исключение, которое возбуждается, если статус код ответа != 200.
     """
-    def __init__(self, response: requests.Response):
+    def __init__(self, response):
         """
-        :param response: объект ответа.
+        :param response: объект ответа (_ResponseWrapper).
         """
         self.response = response
         self.status_code = response.status_code
-        self.url = response.request.url
-        self.request_headers = response.request.headers
+        self.url = getattr(response, "url", "unknown")
+        self.request_method = getattr(response, "request_method", "unknown")
+        self.request_headers = getattr(response, "request_headers", {})
         if "cookie" in self.request_headers:
+            self.request_headers = dict(self.request_headers)
             self.request_headers["cookie"] = "HIDDEN"
-        self.request_body = response.request.body
+        self.request_body = getattr(response, "request_body", None)
         self.log_response = False
 
     def short_str(self):
@@ -39,12 +40,12 @@ class RequestFailedError(Exception):
 
     def __str__(self):
         msg = f"Ошибка запроса к {self.url} .\n" \
-              f"Метод: {self.response.request.method} .\n" \
+              f"Метод: {self.request_method} .\n" \
               f"Статус-код ответа: {self.status_code} .\n" \
               f"Заголовки запроса: {self.request_headers} .\n" \
               f"Тело запроса: {self.request_body} ."
         if self.log_response:
-            msg += f"\n{self.response.content.decode()}"
+            msg += f"\n{self.response.text}"
         return msg
 
 
@@ -93,7 +94,7 @@ class ImageUploadError(RequestFailedError):
     """
     Исключение, которое возбуждается, если произошла ошибка при выгрузке изображения.
     """
-    def __init__(self, response: requests.Response, error_message: str | None):
+    def __init__(self, response, error_message: str | None):
         super(ImageUploadError, self).__init__(response)
         self.error_message = error_message
         if not self.error_message:
@@ -107,7 +108,7 @@ class MessageNotDeliveredError(RequestFailedError):
     """
     Исключение, которое возбуждается, если при отправке сообщения произошла ошибка.
     """
-    def __init__(self, response: requests.Response, error_message: str | None, chat_id: int):
+    def __init__(self, response, error_message: str | None, chat_id: int):
         super(MessageNotDeliveredError, self).__init__(response)
         self.error_message = error_message
         self.chat_id = chat_id
@@ -124,7 +125,7 @@ class FeedbackEditingError(RequestFailedError):
     Исключение, которое возбуждается, если при добавлении / редактировании / удалении отзыва / ответа на отзыв
     произошла ошибка.
     """
-    def __init__(self, response: requests.Response, error_message: str | None, order_id: str):
+    def __init__(self, response, error_message: str | None, order_id: str):
         super(FeedbackEditingError, self).__init__(response)
         self.error_message = error_message
         self.order_id = order_id
@@ -140,7 +141,7 @@ class LotSavingError(RequestFailedError):
     """
     Исключение, которое возбуждается, если при сохранении лота произошла ошибка.
     """
-    def __init__(self, response: requests.Response, error_message: str | None, lot_id: int):
+    def __init__(self, response, error_message: str | None, lot_id: int):
         super(LotSavingError, self).__init__(response)
         self.error_message = error_message
         self.lot_id = lot_id
@@ -156,7 +157,7 @@ class RefundError(RequestFailedError):
     """
     Исключение, которое возбуждается, если при возврате средств за заказ произошла ошибка.
     """
-    def __init__(self, response: requests.Response, error_message: str | None, order_id: str):
+    def __init__(self, response, error_message: str | None, order_id: str):
         super(RefundError, self).__init__(response)
         self.error_message = error_message
         self.order_id = order_id

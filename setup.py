@@ -5,18 +5,18 @@ with open("README.md", "r", encoding="utf-8") as f:
     long_desc = f.read()
 
 
-setup(name='FunPayAPI',
+setup(name='aioFunPayAPI',
       version="1.1.0",
-      description='Прослойка между FunPayAPI и клиентом.',
+      description='Прослойка между aioFunPayAPI и клиентом.',
       long_description=long_desc,
       long_description_content_type="text/markdown",
       author='Woopertail',
       author_email='woopertail@gmail.com',
-      url='https://github.com/woopertail/FunPayAPI',
+      url='https://github.com/woopertail/aioFunPayAPI',
       packages=find_packages("."),
       license='GPL3',
       keywords='funpay bot api tools',
-      install_requires=['requests==2.28.1', 'beautifulsoup4', 'requests_toolbelt==0.10.1'],
+      install_requires=['aiohttp>=3.9.0', 'beautifulsoup4'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Programming Language :: Python :: 3',
