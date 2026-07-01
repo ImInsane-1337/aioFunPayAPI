@@ -1,64 +1,72 @@
-<img src="https://i.ibb.co/tJKk0QS/Fun-Pay-API-darkmode.png">
-<h1 align="center">FunPay API</h1>
-<h4 align="center">Библиотека для легкого написания ботов FunPay.</h4>
+# aioFunPayAPI
 
-<h1 align="center">Важные ссылки</h1>
-<h4 align="center">
-    <a href="https://t.me/funpay_cardinal">Telegram чат</a><br>
-    <a href="https://funpayapi.readthedocs.io/ru/latest/">Документация</a><br>
-    <a href="https://pypi.org/project/FunPayAPI/">PyPi</a><br>
-</h4>
+Асинхронная библиотека для легкого написания ботов FunPay. Полностью базируется на `asyncio` и `aiohttp`.
 
-<h1 align="center">Быстрый старт</h1>
-<h4 align="center">Пример простого бота, который будет отвечать на сообщение с текстом «привет».</h4>
+## Установка
 
-```python
-from FunPayAPI import Account, Runner, types, enums
-
-
-TOKEN = "<golden_key>"
-
-# Создаем класс аккаунта и сразу же получаем данные аккаунта.
-acc = Account(TOKEN).get()
-
-# Создаем класс "прослушивателя" событий.
-runner = Runner(acc)
-
-
-# "Слушаем" события
-for event in runner.listen(requests_delay=4):
-    # Если событие - новое сообщение
-    if event.type is enums.EventTypes.NEW_MESSAGE:
-        # Если текст сообщения == "привет" и оно отправлено не нами
-        if event.message.text.lower() == "привет" and event.message.author_id != acc.id:
-            acc.send_message(event.message.chat_id, "Ну привет...")  # отправляем ответное сообщение
+Для установки библиотеки из локального каталога:
+```bash
+pip install .
 ```
 
-<h4 align="center">Пример простого бота, который выдает товар при новом заказе, если в названии заказа есть слово «аккаунт».</h4>
+## Быстрый старт
+
+Пример простого асинхронного бота, который отвечает на сообщение с текстом «привет»:
 
 ```python
-from FunPayAPI import Account, Runner, types, enums
+import asyncio
+from FunPayAPI import Account, Runner
+from FunPayAPI.enums import EventTypes
 
+async def main():
+    # Создаем класс аккаунта и асинхронно получаем его данные.
+    acc = await Account(golden_key="YOUR_GOLDEN_KEY").get()
+    print(f"Авторизован как {acc.username} (ID: {acc.id})")
 
-TOKEN = "<golden_key>"
+    # Создаем прослушиватель событий.
+    runner = Runner(acc)
 
-# Создаем класс аккаунта и сразу же получаем данные аккаунта.
-acc = Account(TOKEN).get()
+    # Асинхронно прослушиваем события
+    async for event in runner.listen(requests_delay=6.0):
+        # Если событие — новое сообщение
+        if event.type == EventTypes.NEW_MESSAGE:
+            # Если текст сообщения "привет" и оно отправлено не нами
+            if event.message.text and event.message.text.lower() == "привет" and event.message.author_id != acc.id:
+                # Отправляем ответное сообщение асинхронно
+                await acc.send_message(event.message.chat_id, "Ну привет...")
+                runner.mark_as_by_bot(event.message.chat_id, event.message.id)
 
-# Создаем класс "прослушивателя" событий.
-runner = Runner(acc)
-
-
-# "Слушаем" события
-for event in runner.listen(requests_delay=4):
-    # Если событие - новый заказ
-    if event.type is enums.EventTypes.NEW_ORDER:
-        # Если "аккаунт" есть в названии заказа
-        if "аккаунт" in event.order.description:
-            chat = acc.get_chat_by_name(event.order.buyer_username, True)  # получаем ID чата по никнейму
-            acc.send_message(chat.id, f"Привет, {event.order.buyer_username}!\n"
-                                      f"Вот твой аккаунт:\n"
-                                      f"Почта: mail@somemail.ru\n"
-                                      f"Пароль: somepassword!123")  # отправляем ответное сообщение
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
+## Выдача товара при новом заказе
+
+Пример асинхронного бота, который выдает товар при новом оплаченном заказе:
+
+```python
+import asyncio
+from FunPayAPI import Account, Runner
+from FunPayAPI.enums import EventTypes, OrderStatuses
+
+async def main():
+    acc = await Account(golden_key="YOUR_GOLDEN_KEY").get()
+    runner = Runner(acc)
+
+    async for event in runner.listen(requests_delay=6.0):
+        # Если событие — новый заказ
+        if event.type == EventTypes.NEW_ORDER:
+            # Обязательно очищаем ID от знака '#'
+            clean_id = event.order.id.replace("#", "")
+            
+            if event.order.status == OrderStatuses.PAID:
+                order_info = await acc.get_order(clean_id)
+                # Отправляем товар в чат покупателю
+                await acc.send_message(
+                    order_info.chat_id,
+                    f"Привет, {event.order.buyer_username}!\nВот твой товар: ..."
+                )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
