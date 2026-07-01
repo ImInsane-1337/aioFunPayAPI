@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: aioFunPayAPI
-Version: 1.1.0
+Version: 1.1.1
 Summary: Прослойка между aioFunPayAPI и клиентом.
 Home-page: https://github.com/woopertail/aioFunPayAPI
 Author: Woopertail
@@ -33,9 +33,8 @@ Dynamic: summary
 
 ## Установка
 
-Для установки библиотеки из локального каталога:
 ```bash
-pip install .
+pip install aioFunPayAPI
 ```
 
 ## Быстрый старт

@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 
 setup(name='aioFunPayAPI',
-      version="1.1.0",
+      version="1.1.1",
       description='Прослойка между aioFunPayAPI и клиентом.',
       long_description=long_desc,
       long_description_content_type="text/markdown",
