@@ -14,8 +14,8 @@ pip install aioFunPayAPI
 
 ```python
 import asyncio
-from FunPayAPI import Account, Runner
-from FunPayAPI.enums import EventTypes
+from aioFunPayAPI import Account, Runner
+from aioFunPayAPI.enums import EventTypes
 
 async def main():
     # Создаем класс аккаунта и асинхронно получаем его данные.
@@ -45,8 +45,8 @@ if __name__ == "__main__":
 
 ```python
 import asyncio
-from FunPayAPI import Account, Runner
-from FunPayAPI.enums import EventTypes, OrderStatuses
+from aioFunPayAPI import Account, Runner
+from aioFunPayAPI.enums import EventTypes, OrderStatuses
 
 async def main():
     acc = await Account(golden_key="YOUR_GOLDEN_KEY").get()

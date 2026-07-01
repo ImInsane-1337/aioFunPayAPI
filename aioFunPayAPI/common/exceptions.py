@@ -1,13 +1,13 @@
 """
-В данном модуле описаны все кастомные исключения, используемые в пакете FunPayAPI.
+В данном модуле описаны все кастомные исключения, используемые в пакете aioFunPayAPI.
 """
 from .. import types
 
 
 class AccountNotInitiatedError(Exception):
     """
-    Исключение, которое возбуждается, если предпринята попытка вызвать метод класса :class:`FunPayAPI.account.Account`
-    без предварительного получения данных аккаунта с помощью метода :meth:`FunPayAPI.account.Account.get`.
+    Исключение, которое возбуждается, если предпринята попытка вызвать метод класса :class:`aioFunPayAPI.account.Account`
+    без предварительного получения данных аккаунта с помощью метода :meth:`aioFunPayAPI.account.Account.get`.
     """
     def __init__(self):
         pass

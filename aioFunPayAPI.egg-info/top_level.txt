@@ -1,1 +1,1 @@
-FunPayAPI
+aioFunPayAPI

@@ -77,8 +77,8 @@ async for event in runner.listen(requests_delay=6.0):
 ```python
 import time
 import asyncio
-from FunPayAPI import Account, Runner
-from FunPayAPI.enums import OrderStatuses, EventTypes, SubCategoryTypes
+from aioFunPayAPI import Account, Runner
+from aioFunPayAPI.enums import OrderStatuses, EventTypes, SubCategoryTypes
 
 async def main():
     # ── 1. Инициализация ───────────────────────────────────────────
@@ -184,8 +184,8 @@ if event.message.author_id != account.id:
 ```python
 import asyncio
 from aiogram import Bot, Dispatcher
-from FunPayAPI import Account, Runner
-from FunPayAPI.enums import EventTypes, OrderStatuses
+from aioFunPayAPI import Account, Runner
+from aioFunPayAPI.enums import EventTypes, OrderStatuses
 
 tg_bot = Bot(token="TG_TOKEN")
 dp = Dispatcher()

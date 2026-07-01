@@ -15,31 +15,31 @@ from ..common import exceptions
 from .events import *
 
 
-logger = logging.getLogger("FunPayAPI.runner")
+logger = logging.getLogger("aioFunPayAPI.runner")
 
 
 class Runner:
     """
     Класс для получения новых событий FunPay.
 
-    :param account: экземпляр аккаунта (должен быть инициализирован с помощью метода :meth:`FunPayAPI.account.Account.get`).
-    :type account: :class:`FunPayAPI.account.Account`
+    :param account: экземпляр аккаунта (должен быть инициализирован с помощью метода :meth:`aioFunPayAPI.account.Account.get`).
+    :type account: :class:`aioFunPayAPI.account.Account`
 
     :param disable_message_requests: отключить ли запросы для получения истории чатов?\n
-        Если `True`, :meth:`FunPayAPI.updater.runner.Runner.listen` не будет возвращать события
-        :class:`FunPayAPI.updater.events.NewMessageEvent`.\n
+        Если `True`, :meth:`aioFunPayAPI.updater.runner.Runner.listen` не будет возвращать события
+        :class:`aioFunPayAPI.updater.events.NewMessageEvent`.\n
         Из событий, связанных с чатами, будут возвращаться только:\n
-        * :class:`FunPayAPI.updater.events.InitialChatEvent`\n
-        * :class:`FunPayAPI.updater.events.ChatsListChangedEvent`\n
-        * :class:`FunPayAPI.updater.events.LastChatMessageChangedEvent`\n
+        * :class:`aioFunPayAPI.updater.events.InitialChatEvent`\n
+        * :class:`aioFunPayAPI.updater.events.ChatsListChangedEvent`\n
+        * :class:`aioFunPayAPI.updater.events.LastChatMessageChangedEvent`\n
     :type disable_message_requests: :obj:`bool`, опционально
 
     :param disabled_order_requests: отключить ли запросы для получения списка заказов?\n
-        Если `True`, :meth:`FunPayAPI.updater.runner.Runner.listen` не будет возвращать события
-        :class:`FunPayAPI.updater.events.InitialOrderEvent`, :class:`FunPayAPI.updater.events.NewOrderEvent`,
-        :class:`FunPayAPI.updater.events.OrderStatusChangedEvent`.\n
+        Если `True`, :meth:`aioFunPayAPI.updater.runner.Runner.listen` не будет возвращать события
+        :class:`aioFunPayAPI.updater.events.InitialOrderEvent`, :class:`aioFunPayAPI.updater.events.NewOrderEvent`,
+        :class:`aioFunPayAPI.updater.events.OrderStatusChangedEvent`.\n
         Из событий, связанных с заказами, будет возвращаться только
-        :class:`FunPayAPI.updater.events.OrdersListChangedEvent`.
+        :class:`aioFunPayAPI.updater.events.OrdersListChangedEvent`.
     :type disabled_order_requests: :obj:`bool`, опционально
     """
     def __init__(self, account: Account, disable_message_requests: bool = False,
@@ -124,17 +124,17 @@ class Runner:
         """
         Парсит ответ FunPay и создает события.
 
-        :param updates: результат выполнения :meth:`FunPayAPI.updater.runner.Runner.get_updates`
+        :param updates: результат выполнения :meth:`aioFunPayAPI.updater.runner.Runner.get_updates`
         :type updates: :obj:`dict`
 
         :return: список событий.
-        :rtype: :obj:`list` of :class:`FunPayAPI.updater.events.InitialChatEvent`,
-            :class:`FunPayAPI.updater.events.ChatsListChangedEvent`,
-            :class:`FunPayAPI.updater.events.LastChatMessageChangedEvent`,
-            :class:`FunPayAPI.updater.events.NewMessageEvent`, :class:`FunPayAPI.updater.events.InitialOrderEvent`,
-            :class:`FunPayAPI.updater.events.OrdersListChangedEvent`,
-            :class:`FunPayAPI.updater.events.NewOrderEvent`,
-            :class:`FunPayAPI.updater.events.OrderStatusChangedEvent`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.updater.events.InitialChatEvent`,
+            :class:`aioFunPayAPI.updater.events.ChatsListChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.LastChatMessageChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.NewMessageEvent`, :class:`aioFunPayAPI.updater.events.InitialOrderEvent`,
+            :class:`aioFunPayAPI.updater.events.OrdersListChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.NewOrderEvent`,
+            :class:`aioFunPayAPI.updater.events.OrderStatusChangedEvent`
         """
         events = []
         for obj in updates["objects"]:
@@ -152,15 +152,15 @@ class Runner:
         """
         Парсит события, связанные с чатами.
 
-        :param obj: словарь из результата выполнения :meth:`FunPayAPI.updater.runner.Runner.get_updates`, где
+        :param obj: словарь из результата выполнения :meth:`aioFunPayAPI.updater.runner.Runner.get_updates`, где
             "type" == "chat_bookmarks".
         :type obj: :obj:`dict`
 
         :return: список событий, связанных с чатами.
-        :rtype: :obj:list of :class:`FunPayAPI.updater.events.InitialChatEvent`,
-            :class:`FunPayAPI.updater.events.ChatsListChangedEvent`,
-            :class:`FunPayAPI.updater.events.LastChatMessageChangedEvent`,
-            :class:`FunPayAPI.updater.events.NewMessageEvent`
+        :rtype: :obj:list of :class:`aioFunPayAPI.updater.events.InitialChatEvent`,
+            :class:`aioFunPayAPI.updater.events.ChatsListChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.LastChatMessageChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.NewMessageEvent`
         """
         events, lcmc_events = [], []
         self.__last_msg_event_tag = obj.get("tag")
@@ -230,7 +230,7 @@ class Runner:
         :type chats_data: :obj:`dict` {:obj:`int`: :obj:`str` or :obj:`None`}
 
         :return: словарь с событиями новых сообщений в формате {ID чата: [список событий]}
-        :rtype: :obj:`dict` {:obj:`int`: :obj:`list` of :class:`FunPayAPI.updater.events.NewMessageEvent`}
+        :rtype: :obj:`dict` {:obj:`int`: :obj:`list` of :class:`aioFunPayAPI.updater.events.NewMessageEvent`}
         """
         attempts = 3
         while attempts:
@@ -305,15 +305,15 @@ class Runner:
         """
         Парсит события, связанные с продажами.
 
-        :param obj: словарь из результата выполнения :meth:`FunPayAPI.updater.runner.Runner.get_updates`, где
+        :param obj: словарь из результата выполнения :meth:`aioFunPayAPI.updater.runner.Runner.get_updates`, где
             "type" == "orders_counters".
         :type obj: :obj:`dict`
 
         :return: список событий, связанных с продажами.
-        :rtype: :obj:`list` of :class:`FunPayAPI.updater.events.InitialOrderEvent`,
-            :class:`FunPayAPI.updater.events.OrdersListChangedEvent`,
-            :class:`FunPayAPI.updater.events.NewOrderEvent`,
-            :class:`FunPayAPI.updater.events.OrderStatusChangedEvent`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.updater.events.InitialOrderEvent`,
+            :class:`aioFunPayAPI.updater.events.OrdersListChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.NewOrderEvent`,
+            :class:`aioFunPayAPI.updater.events.OrderStatusChangedEvent`
         """
         events = []
         self.__last_order_event_tag = obj.get("tag")
@@ -376,13 +376,13 @@ class Runner:
         Обновляет сохраненное состояние переданного заказа.
 
         :param order: экземпляр заказа, который нужно обновить.
-        :type order: :class:`FunPayAPI.types.OrderShortcut`
+        :type order: :class:`aioFunPayAPI.types.OrderShortcut`
         """
         self.saved_orders[order.id] = order
 
     def mark_as_by_bot(self, chat_id: int, message_id: int):
         """
-        Помечает сообщение с переданным ID, как отправленный с помощью :meth:`FunPayAPI.account.Account.send_message`.
+        Помечает сообщение с переданным ID, как отправленный с помощью :meth:`aioFunPayAPI.account.Account.send_message`.
 
         :param chat_id: ID чата.
         :type chat_id: :obj:`int`
@@ -410,13 +410,13 @@ class Runner:
         :type ignore_exceptions: :obj:`bool`, опционально
 
         :return: генератор событий FunPay.
-        :rtype: :obj:`Generator` of :class:`FunPayAPI.updater.events.InitialChatEvent`,
-            :class:`FunPayAPI.updater.events.ChatsListChangedEvent`,
-            :class:`FunPayAPI.updater.events.LastChatMessageChangedEvent`,
-            :class:`FunPayAPI.updater.events.NewMessageEvent`, :class:`FunPayAPI.updater.events.InitialOrderEvent`,
-            :class:`FunPayAPI.updater.events.OrdersListChangedEvent`,
-            :class:`FunPayAPI.updater.events.NewOrderEvent`,
-            :class:`FunPayAPI.updater.events.OrderStatusChangedEvent`
+        :rtype: :obj:`Generator` of :class:`aioFunPayAPI.updater.events.InitialChatEvent`,
+            :class:`aioFunPayAPI.updater.events.ChatsListChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.LastChatMessageChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.NewMessageEvent`, :class:`aioFunPayAPI.updater.events.InitialOrderEvent`,
+            :class:`aioFunPayAPI.updater.events.OrdersListChangedEvent`,
+            :class:`aioFunPayAPI.updater.events.NewOrderEvent`,
+            :class:`aioFunPayAPI.updater.events.OrderStatusChangedEvent`
         """
         while True:
             try:

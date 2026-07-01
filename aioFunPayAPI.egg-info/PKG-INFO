@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: aioFunPayAPI
-Version: 1.1.1
+Version: 1.1.2
 Summary: Прослойка между aioFunPayAPI и клиентом.
 Home-page: https://github.com/woopertail/aioFunPayAPI
 Author: Woopertail
@@ -43,8 +43,8 @@ pip install aioFunPayAPI
 
 ```python
 import asyncio
-from FunPayAPI import Account, Runner
-from FunPayAPI.enums import EventTypes
+from aioFunPayAPI import Account, Runner
+from aioFunPayAPI.enums import EventTypes
 
 async def main():
     # Создаем класс аккаунта и асинхронно получаем его данные.
@@ -74,8 +74,8 @@ if __name__ == "__main__":
 
 ```python
 import asyncio
-from FunPayAPI import Account, Runner
-from FunPayAPI.enums import EventTypes, OrderStatuses
+from aioFunPayAPI import Account, Runner
+from aioFunPayAPI.enums import EventTypes, OrderStatuses
 
 async def main():
     acc = await Account(golden_key="YOUR_GOLDEN_KEY").get()

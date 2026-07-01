@@ -19,7 +19,7 @@ from . import types
 from .common import exceptions, utils, enums
 
 
-logger = logging.getLogger("FunPayAPI.account")
+logger = logging.getLogger("aioFunPayAPI.account")
 PRIVATE_CHAT_ID_RE = re.compile(r"users-\d+-\d+$")
 
 
@@ -181,7 +181,7 @@ class Account:
         :type update_phpsessid: :obj:`bool`, опционально
 
         :return: объект аккаунта с обновленными данными.
-        :rtype: :class:`FunPayAPI.account.Account`
+        :rtype: :class:`aioFunPayAPI.account.Account`
         """
         response = await self.method("get", "https://funpay.com", {}, {}, update_phpsessid, raise_not_200=True)
 
@@ -219,13 +219,13 @@ class Account:
         Получает список всех опубликованных лотов переданной подкатегории.
 
         :param subcategory_type: тип подкатегории.
-        :type subcategory_type: :class:`FunPayAPI.enums.SubCategoryTypes`
+        :type subcategory_type: :class:`aioFunPayAPI.enums.SubCategoryTypes`
 
         :param subcategory_id: ID подкатегории.
         :type subcategory_id: :obj:`int`
 
         :return: список всех опубликованных лотов переданной подкатегории.
-        :rtype: :obj:`list` of :class:`FunPayAPI.types.LotShortcut`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.types.LotShortcut`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -270,7 +270,7 @@ class Account:
         :type lot_id: :obj:`int`, опционально
 
         :return: информацию о балансе пользователя.
-        :rtype: :class:`FunPayAPI.types.Balance`
+        :rtype: :class:`aioFunPayAPI.types.Balance`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -307,7 +307,7 @@ class Account:
         :type from_id: :obj:`int`, опционально.
 
         :return: история указанного чата.
-        :rtype: :obj:`list` of :class:`FunPayAPI.types.Message`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.types.Message`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -343,7 +343,7 @@ class Account:
         :type chats_data: :obj:`dict` {:obj:`int` or :obj:`str`: :obj:`str` or :obj:`None`}
 
         :return: словарь с историями чатов в формате {ID чата: [список сообщений]}
-        :rtype: :obj:`dict` {:obj:`int`: :obj:`list` of :class:`FunPayAPI.types.Message`}
+        :rtype: :obj:`dict` {:obj:`int`: :obj:`list` of :class:`aioFunPayAPI.types.Message`}
         """
         headers = {
             "accept": "*/*",
@@ -378,7 +378,7 @@ class Account:
     async def upload_image(self, image: str | IO[bytes]) -> int:
         """
         Выгружает изображение на сервер FunPay для дальнейшей отправки в качестве сообщения.
-        Для отправки изображения в чат рекомендуется использовать метод :meth:`FunPayAPI.account.Account.send_image`.
+        Для отправки изображения в чат рекомендуется использовать метод :meth:`aioFunPayAPI.account.Account.send_image`.
 
         :param image: путь до изображения или представление изображения в виде байтов.
         :type image: :obj:`str` or :obj:`bytes`
@@ -445,7 +445,7 @@ class Account:
         :type update_last_saved_message: :obj:`bool`, опционально.
 
         :return: экземпляр отправленного сообщения.
-        :rtype: :class:`FunPayAPI.types.Message`
+        :rtype: :class:`aioFunPayAPI.types.Message`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -520,7 +520,7 @@ class Account:
 
         :param image: ID изображения / путь до изображения / изображение в виде байтов.
             Если передан путь до изображения или представление изображения в виде байтов, сначала оно будет выгружено
-            с помощью метода :meth:`FunPayAPI.account.Account.upload_image`.
+            с помощью метода :meth:`aioFunPayAPI.account.Account.upload_image`.
         :type image: :obj:`int` or :obj:`str` or :obj:`bytes`
 
         :param chat_name: Название чата (никнейм собеседника). Нужен для возвращаемого объекта.
@@ -533,7 +533,7 @@ class Account:
         :type update_last_saved_message: :obj:`bool`, опционально
 
         :return: объект отправленного сообщения.
-        :rtype: :class:`FunPayAPI.types.Message`
+        :rtype: :class:`aioFunPayAPI.types.Message`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -649,10 +649,10 @@ class Account:
         Отправляет запрос на вывод средств.
 
         :param currency: валюта.
-        :type currency: :class:`FunPayAPI.common.enums.Currency`
+        :type currency: :class:`aioFunPayAPI.common.enums.Currency`
 
         :param wallet: тип кошелька.
-        :type wallet: :class:`FunPayAPI.common.enums.Wallet`
+        :type wallet: :class:`aioFunPayAPI.common.enums.Wallet`
 
         :param amount: кол-во средств.
         :type amount: :obj:`int` or :obj:`float`
@@ -739,7 +739,7 @@ class Account:
 
         :param subcategories: список подкатегорий, которые необходимо поднять. Если не указаны, поднимутся все
             подкатегории переданной категории.
-        :type subcategories: :obj:`list` of :obj:`int` or :class:`FunPayAPI.types.SubCategory`
+        :type subcategories: :obj:`list` of :obj:`int` or :class:`aioFunPayAPI.types.SubCategory`
 
         :param exclude: ID подкатегорий, которые не нужно поднимать.
         :type exclude: :obj:`list` of :obj:`int`, опционально.
@@ -796,7 +796,7 @@ class Account:
         :type user_id: :obj:`int`
 
         :return: объект профиля пользователя.
-        :rtype: :class:`FunPayAPI.types.UserProfile`
+        :rtype: :class:`aioFunPayAPI.types.UserProfile`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -858,7 +858,7 @@ class Account:
         :type chat_id: :obj:`int`
 
         :return: объект чата.
-        :rtype: :class:`FunPayAPI.types.Chat`
+        :rtype: :class:`aioFunPayAPI.types.Chat`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -886,7 +886,7 @@ class Account:
         :type order_id: :obj:`str`
 
         :return: объекст заказа.
-        :rtype: :class:`FunPayAPI.types.Order`
+        :rtype: :class:`aioFunPayAPI.types.Order`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -1013,7 +1013,7 @@ class Account:
         :param more_filters: доп. фильтры.
 
         :return: (ID след. заказа (для start_from), список заказов)
-        :rtype: :obj:`tuple` (:obj:`str` or :obj:`None`, :obj:`list` of :class:`FunPayAPI.types.OrderShortcut`)
+        :rtype: :obj:`tuple` (:obj:`str` or :obj:`None`, :obj:`list` of :class:`aioFunPayAPI.types.OrderShortcut`)
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -1108,7 +1108,7 @@ class Account:
         Сохраняет чаты.
 
         :param chats: объекты чатов.
-        :type chats: :obj:`list` of :class:`FunPayAPI.types.ChatShortcut`
+        :type chats: :obj:`list` of :class:`aioFunPayAPI.types.ChatShortcut`
         """
         for i in chats:
             self.__saved_chats[i.id] = i
@@ -1118,7 +1118,7 @@ class Account:
         Запрашивает чаты и парсит их.
 
         :return: объекты чатов (не больше 50).
-        :rtype: :obj:`list` of :class:`FunPayAPI.types.ChatShortcut`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.types.ChatShortcut`
         """
         chats = {
             "type": "chat_bookmarks",
@@ -1188,7 +1188,7 @@ class Account:
         :type make_request: :obj:`bool`, опционально
 
         :return: объект чата или :obj:`None`, если чат не был найден.
-        :rtype: :class:`FunPayAPI.types.ChatShortcut` or :obj:`None`
+        :rtype: :class:`aioFunPayAPI.types.ChatShortcut` or :obj:`None`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -1214,7 +1214,7 @@ class Account:
         :type make_request: :obj:`bool`, опционально
 
         :return: объект чата или :obj:`None`, если чат не был найден.
-        :rtype: :class:`FunPayAPI.types.ChatShortcut` or :obj:`None`
+        :rtype: :class:`aioFunPayAPI.types.ChatShortcut` or :obj:`None`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -1233,7 +1233,7 @@ class Account:
         :type lot_id: :obj:`int`
 
         :return: объект с полями лота.
-        :rtype: :class:`FunPayAPI.types.LotFields`
+        :rtype: :class:`aioFunPayAPI.types.LotFields`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -1260,7 +1260,7 @@ class Account:
         Сохраняет лот на FunPay.
 
         :param lot_fields: объект с полями лота.
-        :type lot_fields: :class:`FunPayAPI.types.LotFields`
+        :type lot_fields: :class:`aioFunPayAPI.types.LotFields`
         """
         if not self.is_initiated:
             raise exceptions.AccountNotInitiatedError()
@@ -1285,27 +1285,27 @@ class Account:
         :type category_id: :obj:`int`
 
         :return: объект категории (игры) или :obj:`None`, если категория не была найдена.
-        :rtype: :class:`FunPayAPI.types.Category` or :obj:`None`
+        :rtype: :class:`aioFunPayAPI.types.Category` or :obj:`None`
         """
         return self.__sorted_categories.get(category_id)
 
     @property
     def categories(self) -> list[types.Category]:
         """
-        Возвращает все категории (игры) FunPay (парсятся при первом выполнении метода :meth:`FunPayAPI.account.Account.get`).
+        Возвращает все категории (игры) FunPay (парсятся при первом выполнении метода :meth:`aioFunPayAPI.account.Account.get`).
 
         :return: все категории (игры) FunPay.
-        :rtype: :obj:`list` of :class:`FunPayAPI.types.Category`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.types.Category`
         """
         return self.__categories
 
     def get_sorted_categories(self) -> dict[int, types.Category]:
         """
         Возвращает все категории (игры) FunPay в виде словаря {ID: категория}
-        (парсятся при первом выполнении метода :meth:`FunPayAPI.account.Account.get`).
+        (парсятся при первом выполнении метода :meth:`aioFunPayAPI.account.Account.get`).
 
         :return: все категории (игры) FunPay в виде словаря {ID: категория}
-        :rtype: :obj:`dict` {:obj:`int`: :class:`FunPayAPI.types.Category`}
+        :rtype: :obj:`dict` {:obj:`int`: :class:`aioFunPayAPI.types.Category`}
         """
         return self.__sorted_categories
 
@@ -1315,13 +1315,13 @@ class Account:
         Возвращает объект подкатегории.
 
         :param subcategory_type: тип подкатегории.
-        :type subcategory_type: :class:`FunPayAPI.common.enums.SubCategoryTypes`
+        :type subcategory_type: :class:`aioFunPayAPI.common.enums.SubCategoryTypes`
 
         :param subcategory_id: ID подкатегории.
         :type subcategory_id: :obj:`int`
 
         :return: объект подкатегории или :obj:`None`, если подкатегория не была найдена.
-        :rtype: :class:`FunPayAPI.types.SubCategory` or :obj:`None`
+        :rtype: :class:`aioFunPayAPI.types.SubCategory` or :obj:`None`
         """
         return self.__sorted_subcategories[subcategory_type].get(subcategory_id)
 
@@ -1331,7 +1331,7 @@ class Account:
         Возвращает все подкатегории FunPay (парсятся при первом выполнении метода Account.get).
 
         :return: все подкатегории FunPay.
-        :rtype: :obj:`list` of :class:`FunPayAPI.types.SubCategory`
+        :rtype: :obj:`list` of :class:`aioFunPayAPI.types.SubCategory`
         """
         return self.__subcategories
 
@@ -1341,14 +1341,14 @@ class Account:
         (парсятся при первом выполнении метода Account.get).
 
         :return: все подкатегории FunPay в виде словаря {тип подкатегории: {ID: подкатегория}}
-        :rtype: :obj:`dict` {:class:`FunPayAPI.common.enums.SubCategoryTypes`: :obj:`dict` {:obj:`int` :class:`FunPayAPI.types.SubCategory`}}
+        :rtype: :obj:`dict` {:class:`aioFunPayAPI.common.enums.SubCategoryTypes`: :obj:`dict` {:obj:`int` :class:`aioFunPayAPI.types.SubCategory`}}
         """
         return self.__sorted_subcategories
 
     @property
     def is_initiated(self) -> bool:
         """
-        Инициализирован ли класс :class:`FunPayAPI.account.Account` с помощью метода :meth:`FunPayAPI.account.Account.get`?
+        Инициализирован ли класс :class:`aioFunPayAPI.account.Account` с помощью метода :meth:`aioFunPayAPI.account.Account.get`?
 
         :return: :obj:`True`, если да, :obj:`False`, если нет.
         :rtype: :obj:`bool`
