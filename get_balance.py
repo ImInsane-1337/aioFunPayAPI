@@ -15,9 +15,20 @@ async def get_my_balance():
         account = await Account(golden_key=golden_key).get()
         print(f"Успешно авторизован как: {account.username} (ID: {account.id})")
         
-        print("[2/3] Запрос баланса...")
+        print("[2/3] Поиск активных лотов для проверки баланса...")
+        # Получаем профиль пользователя, чтобы найти его лоты
+        user_profile = await account.get_user(account.id)
+        lots = user_profile.get_lots()
+        
+        if lots:
+            lot_id = lots[0].id
+            print(f"Используем ваш активный лот: {lot_id} ({lots[0].description})")
+        else:
+            lot_id = 58337249
+            print(f"Активные лоты не найдены в профиле. Используем резервный ID: {lot_id}")
+        
         # Получение баланса
-        balance = await account.get_balance()
+        balance = await account.get_balance(lot_id=lot_id)
         
         print("\n[3/3] Результаты:")
         print("=" * 45)
@@ -32,6 +43,7 @@ async def get_my_balance():
         print("\nОшибка: Не удалось авторизоваться. Проверьте правильность введённого golden_key.")
     except exceptions.RequestFailedError as e:
         print(f"\nОшибка запроса к FunPay API: {e.short_str()}")
+        print("Попробуйте указать другой ID лота в качестве параметра метода get_balance(lot_id=...).")
     except Exception as e:
         print(f"\nПроизошла непредвиденная ошибка: {e}")
 
