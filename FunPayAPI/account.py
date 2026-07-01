@@ -1433,8 +1433,37 @@ class Account:
                 message_text = message_text.replace(self.__bot_character, "", 1)
                 by_bot = True
 
+            date = parser.find('div', {"class": "chat-msg-date"})
+            date_text = date.get('title') if date else None
+            dt = None
+            if date_text:
+                date_text = date_text.strip().replace(',', '')
+                ru_months = {
+                    "января": "January",
+                    "февраля": "February",
+                    "марта": "March",
+                    "апреля": "April",
+                    "мая": "May",
+                    "июня": "June",
+                    "июля": "July",
+                    "августа": "August",
+                    "сентября": "September",
+                    "октября": "October",
+                    "ноября": "November",
+                    "декабря": "December",
+                }
+                for ru, en in ru_months.items():
+                    if ru in date_text:
+                        date_text = date_text.replace(ru, en)
+                        break
+                date_text = f'{date_text} {datetime.now().year}'
+                try:
+                    dt = datetime.strptime(date_text, "%d %B %H:%M:%S %Y")
+                except ValueError:
+                    dt = None
+
             message_obj = types.Message(i["id"], message_text, chat_id, interlocutor_username,
-                                        None, author_id, i["html"], image_link, determine_msg_type=False)
+                                        None, author_id, i["html"], image_link, determine_msg_type=False, date=dt)
             message_obj.by_bot = by_bot
             message_obj.type = types.MessageTypes.NON_SYSTEM if author_id != 0 else message_obj.get_message_type()
             messages.append(message_obj)

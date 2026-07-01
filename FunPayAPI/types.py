@@ -163,7 +163,7 @@ class Message:
     """
     def __init__(self, id_: int, text: str | None, chat_id: int | str, chat_name: str | None,
                  author: str | None, author_id: int, html: str,
-                 image_link: str | None = None, determine_msg_type: bool = True, badge_text: Optional[str] = None):
+                 image_link: str | None = None, determine_msg_type: bool = True, badge_text: Optional[str] = None, date: Optional[datetime.datetime] = None):
         self.id: int = id_
         """ID сообщения."""
         self.text: str | None = text
@@ -186,6 +186,8 @@ class Message:
         """Отправлено ли сообщение с помощью :meth:`FunPayAPI.Account.send_message`?"""
         self.badge: str | None = badge_text
         """Текст бэйджика тех. поддержки."""
+        self.date: datetime.datetime | None = date
+        """Дата сообщения"""
 
     def get_message_type(self) -> MessageTypes:
         """
@@ -303,9 +305,9 @@ class OrderShortcut:
         :rtype: :obj:`int`
         """
         res = RegularExpressions()
-        result = res.PRODUCTS_AMOUNT.findall(self.description)
-        if result:
-            return int(result[0].split(" ")[0])
+        match = res.PRODUCTS_AMOUNT.search(self.description)
+        if match:
+            return int(match.group(1).replace(' ', ''))
         return 1
 
     def __str__(self):
