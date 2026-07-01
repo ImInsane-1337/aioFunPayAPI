@@ -29,7 +29,7 @@ Dynamic: summary
 
 # aioFunPayAPI
 
-Асинхронная библиотека для легкого написания ботов FunPay. Полностью базируется на `asyncio` и `aiohttp`.
+Полностью асинхронный форк оригинальной библиотеки [FunPayAPI от LIMBODS](https://github.com/LIMBODS/FunPayAPI), переписанный на `asyncio` и `aiohttp` для легкого написания неблокирующих ботов FunPay.
 
 ## Установка
 
