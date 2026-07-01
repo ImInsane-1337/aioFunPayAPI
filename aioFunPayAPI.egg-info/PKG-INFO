@@ -1,10 +1,10 @@
 Metadata-Version: 2.4
 Name: aioFunPayAPI
-Version: 1.1.2
+Version: 1.1.3
 Summary: Прослойка между aioFunPayAPI и клиентом.
-Home-page: https://github.com/woopertail/aioFunPayAPI
-Author: Woopertail
-Author-email: woopertail@gmail.com
+Home-page: https://github.com/ImInsane-1337/aioFunPayAPI
+Author: ImInsane-1337
+Author-email: insaneloadstring1337@gmail.com
 License: GPL3
 Keywords: funpay bot api tools
 Classifier: Development Status :: 5 - Production/Stable

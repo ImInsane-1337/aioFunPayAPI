@@ -6,13 +6,13 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 
 setup(name='aioFunPayAPI',
-      version="1.1.2",
+      version="1.1.3",
       description='Прослойка между aioFunPayAPI и клиентом.',
       long_description=long_desc,
       long_description_content_type="text/markdown",
-      author='Woopertail',
-      author_email='woopertail@gmail.com',
-      url='https://github.com/woopertail/aioFunPayAPI',
+      author='ImInsane-1337',
+      author_email='insaneloadstring1337@gmail.com',
+      url='https://github.com/ImInsane-1337/aioFunPayAPI',
       packages=find_packages("."),
       license='GPL3',
       keywords='funpay bot api tools',
